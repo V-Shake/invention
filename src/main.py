@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from ar_breadboard import ARBreadboard, main as ar_main
+from ar_test import ar_main
 
 def basic_marker_detection():
     """Original ArUco marker detection function"""
@@ -88,7 +88,7 @@ def main():
     print("=== ArUco Marker Detection & AR Application ===")
     print("Choose an option:")
     print("1. Basic ArUco Marker Detection")
-    print("2. AR 3D Breadboard Model Overlay")
+    print("2. AR 3D Axes Visualization")
     print("3. Exit")
     
     while True:
@@ -100,8 +100,8 @@ def main():
                 basic_marker_detection()
                 break
             elif choice == "2":
-                print("\nStarting AR 3D Breadboard Model...")
-                ar_main()  # Call the AR function from ar_breadboard.py
+                print("\nStarting AR 3D Axes Visualization...")
+                ar_main()
                 break
             elif choice == "3":
                 print("Goodbye!")
