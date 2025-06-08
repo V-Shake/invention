@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 import math
-import pywavefront
 import os
 
 def load_obj_model(obj_path):
@@ -58,10 +57,9 @@ def load_obj_model(obj_path):
         max_coords = np.max(vertices, axis=0)
         size = max_coords - min_coords
         max_size = np.max(size)
-        
-        # Scale to fit within marker size (2.5 inches = 0.0635 meters)
+          # Scale to fit within marker size (2.5 inches = 0.0635 meters)
         marker_size_meters = 0.0635
-        scale_factor = (marker_size_meters * 0.8) / max_size  # 80% of marker size
+        scale_factor = (marker_size_meters * 1.2) / max_size  # 120% of marker size for bigger model
           # Center and scale the model
         center = (min_coords + max_coords) / 2
         vertices = (vertices - center) * scale_factor
@@ -148,7 +146,7 @@ def draw_3d_model(frame, vertices, faces, projected_vertices):
         return frame
 
 def draw_text_3d(frame, text, position_3d, rvec, tvec, camera_matrix, dist_coeffs):
-    """Draw 3D text above the model with beautiful UI/UX"""
+    """Draw beautiful 3D text with modern UI styling"""
     try:
         # Project text position to 2D
         text_points, _ = cv2.projectPoints(
@@ -158,49 +156,76 @@ def draw_text_3d(frame, text, position_3d, rvec, tvec, camera_matrix, dist_coeff
         
         text_2d = tuple(text_points[0][0].astype(int))
         
-        # Enhanced font settings for better readability
-        font = cv2.FONT_HERSHEY_DUPLEX
-        font_scale = 1.0
+        # Modern font settings - cleaner look
+        font = cv2.FONT_HERSHEY_SIMPLEX  # Clean, modern font
+        font_scale = 0.9
         thickness = 2
-        main_color = (255, 255, 255)  # White text
-        shadow_color = (0, 0, 0)     # Black shadow
         
-        # Get text size for background
+        # Modern color scheme
+        text_color = (255, 255, 255)      # Pure white
+        accent_color = (0, 120, 255)      # Modern blue
+        bg_color = (20, 20, 30)           # Dark modern background
+        
+        # Get text dimensions
         (text_width, text_height), baseline = cv2.getTextSize(text, font, font_scale, thickness)
         
-        # Calculate positions
-        text_x = text_2d[0] - text_width // 2  # Center horizontally
+        # Calculate centered position
+        text_x = text_2d[0] - text_width // 2
         text_y = text_2d[1]
         
-        # Draw modern background with rounded corners effect
-        padding = 12
-        bg_x1 = text_x - padding
-        bg_y1 = text_y - text_height - padding
-        bg_x2 = text_x + text_width + padding
-        bg_y2 = text_y + baseline + padding
+        # Modern card-like background with rounded corners effect
+        padding_x, padding_y = 20, 12
+        corner_radius = 8
         
-        # Create a semi-transparent dark background
+        # Background coordinates
+        bg_x1 = text_x - padding_x
+        bg_y1 = text_y - text_height - padding_y
+        bg_x2 = text_x + text_width + padding_x
+        bg_y2 = text_y + baseline + padding_y
+        
+        # Create modern glass-morphism effect
         overlay = frame.copy()
-        cv2.rectangle(overlay, (bg_x1, bg_y1), (bg_x2, bg_y2), (0, 0, 0), -1)
         
-        # Add subtle border
-        cv2.rectangle(overlay, (bg_x1-1, bg_y1-1), (bg_x2+1, bg_y2+1), (100, 200, 255), 2)
+        # Main background with slight transparency
+        cv2.rectangle(overlay, (bg_x1, bg_y1), (bg_x2, bg_y2), bg_color, -1)
         
-        # Blend with original frame for transparency
-        alpha = 0.8
+        # Simulate rounded corners with multiple rectangles
+        corner_size = corner_radius
+        # Top-left corner
+        cv2.rectangle(overlay, (bg_x1, bg_y1), (bg_x1 + corner_size, bg_y1 + corner_size), bg_color, -1)
+        # Top-right corner  
+        cv2.rectangle(overlay, (bg_x2 - corner_size, bg_y1), (bg_x2, bg_y1 + corner_size), bg_color, -1)
+        # Bottom-left corner
+        cv2.rectangle(overlay, (bg_x1, bg_y2 - corner_size), (bg_x1 + corner_size, bg_y2), bg_color, -1)
+        # Bottom-right corner
+        cv2.rectangle(overlay, (bg_x2 - corner_size, bg_y2 - corner_size), (bg_x2, bg_y2), bg_color, -1)
+        
+        # Modern accent border - thin and elegant
+        border_thickness = 1
+        cv2.rectangle(overlay, (bg_x1, bg_y1), (bg_x2, bg_y2), accent_color, border_thickness)
+        
+        # Subtle top highlight for depth
+        highlight_color = (255, 255, 255, 40)  # Very subtle white
+        cv2.line(overlay, (bg_x1 + 2, bg_y1 + 1), (bg_x2 - 2, bg_y1 + 1), (60, 60, 80), 1)
+        
+        # Blend with frame for glass effect
+        alpha = 0.85
         frame = cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0)
         
-        # Draw shadow text (offset by 2 pixels)
-        cv2.putText(frame, text, (text_x + 2, text_y + 2), font, font_scale, shadow_color, thickness + 1)
+        # Add subtle glow effect behind text
+        glow_offset = 1
+        glow_color = (accent_color[0]//3, accent_color[1]//3, accent_color[2]//3)
+        for offset in range(1, 3):
+            cv2.putText(frame, text, (text_x + offset, text_y + offset), 
+                       font, font_scale, glow_color, thickness + 1)
         
-        # Draw main text
-        cv2.putText(frame, text, (text_x, text_y), font, font_scale, main_color, thickness)
+        # Main text with crisp rendering
+        cv2.putText(frame, text, (text_x, text_y), font, font_scale, text_color, thickness)
         
-        # Add decorative elements - small indicator dots
-        dot_radius = 3
-        dot_color = (100, 200, 255)  # Light blue
-        cv2.circle(frame, (bg_x1 + 8, bg_y1 + (bg_y2-bg_y1)//2), dot_radius, dot_color, -1)
-        cv2.circle(frame, (bg_x2 - 8, bg_y1 + (bg_y2-bg_y1)//2), dot_radius, dot_color, -1)
+        # Modern minimal indicator - single elegant line
+        indicator_y = bg_y1 + (bg_y2 - bg_y1) // 2
+        cv2.line(frame, (bg_x1 + 6, indicator_y), (bg_x1 + 14, indicator_y), accent_color, 2)
+        cv2.line(frame, (bg_x2 - 14, indicator_y), (bg_x2 - 6, indicator_y), accent_color, 2)
         
         return frame
         
