@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from ar_test import ar_main
 from ar_modern_ui import ar_main_modern
+from ar_textured import ar_main_textured
 
 def basic_marker_detection():
     """Original ArUco marker detection function"""
@@ -91,11 +92,12 @@ def main():
     print("1. Basic ArUco Marker Detection")
     print("2. AR 3D Visualization (Enhanced OpenCV)")
     print("3. AR Clean UI (Black Text, Custom Fonts)")
-    print("4. Exit")
+    print("4. AR Textured Model (UV Mapped Breadboard)")
+    print("5. Exit")
     
     while True:
         try:
-            choice = input("\nEnter your choice (1-4): ").strip()
+            choice = input("\nEnter your choice (1-5): ").strip()
             
             if choice == "1":
                 print("\nStarting Basic ArUco Marker Detection...")
@@ -110,10 +112,14 @@ def main():
                 ar_main_modern()
                 break
             elif choice == "4":
+                print("\nStarting Textured AR with UV Mapping...")
+                ar_main_textured()
+                break
+            elif choice == "5":
                 print("Goodbye!")
                 break
             else:
-                print("Invalid choice. Please enter 1, 2, 3, or 4.")
+                print("Invalid choice. Please enter 1, 2, 3, 4, or 5.")
         except KeyboardInterrupt:
             print("\nGoodbye!")
             break
