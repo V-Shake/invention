@@ -91,15 +91,14 @@ def basic_marker_detection():
     
     # Create ArUco detector
     detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
-    
-    # Define component labels for each marker ID
+      # Define component labels for each marker ID
     component_labels = {
         0: "1x Arduino Leonardo",
         1: "1x Breadboard", 
-        3: "1x LED",
-        4: "1x 220 Ohm Resistor",
-        5: "1x Potentiometer",
-        6: "5x Jumper Wires"
+        2: "1x LED",
+        3: "1x 220Ω Resistor",
+        4: "1x Potentiometer",
+        5: "5x Jumper Wires"
     }
     
     while True:
