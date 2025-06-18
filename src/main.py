@@ -24,6 +24,16 @@ def basic_marker_detection():
     # Create ArUco detector
     detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
     
+    # Define component labels for each marker ID
+    component_labels = {
+        0: "1x Arduino Leonardo",
+        1: "1x Breadboard", 
+        3: "1x LED",
+        4: "1x 220 Ohm Resistor",
+        5: "1x Potentiometer",
+        6: "5x Jumper Wires"
+    }
+    
     while True:
         # Capture frame-by-frame
         ret, frame = cap.read()
@@ -37,14 +47,47 @@ def basic_marker_detection():
         
         # Detect ArUco markers
         corners, ids, rejectedImgPoints = detector.detectMarkers(gray)
-        
-        # If markers are detected
+          # If markers are detected
         if ids is not None:
             # Draw detected markers
             cv2.aruco.drawDetectedMarkers(frame, corners, ids)
             
-            # Calculate pose for each marker
+            # Process each detected marker
             for i, corner in enumerate(corners):
+                marker_id = ids[i][0]
+                
+                # Get bounding box coordinates
+                corner_points = corner[0].astype(int)
+                x_min = np.min(corner_points[:, 0])
+                y_min = np.min(corner_points[:, 1])
+                x_max = np.max(corner_points[:, 0])
+                y_max = np.max(corner_points[:, 1])
+                
+                # Add padding to bounding box
+                padding = 20
+                x_min -= padding
+                y_min -= padding
+                x_max += padding
+                y_max += padding
+                
+                # Draw bounding box
+                cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0, 255, 255), 2)
+                
+                # Get component label for this marker ID
+                component_name = component_labels.get(marker_id, f"Unknown Component (ID: {marker_id})")
+                
+                # Calculate text position above the bounding box
+                text_x = x_min
+                text_y = y_min - 10
+                
+                # Ensure text doesn't go off screen
+                if text_y < 20:
+                    text_y = y_max + 25
+                
+                # Draw component label
+                cv2.putText(frame, component_name, (text_x, text_y), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+                
                 # Get the center point of the marker
                 center_x = int(np.mean(corner[0][:, 0]))
                 center_y = int(np.mean(corner[0][:, 1]))
@@ -55,24 +98,23 @@ def basic_marker_detection():
                 dy = corner[0][1][1] - corner[0][0][1]
                 angle = np.degrees(np.arctan2(dy, dx))
                 
-                # Display marker information
-                marker_id = ids[i][0]
+                # Display additional marker information inside the bounding box
                 info_text = f"ID: {marker_id}"
                 position_text = f"X: {center_x}, Y: {center_y}"
                 rotation_text = f"Angle: {angle:.1f}°"
                 
-                # Draw information on the frame
-                cv2.putText(frame, info_text, (center_x - 50, center_y - 30), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-                cv2.putText(frame, position_text, (center_x - 50, center_y - 10), 
+                # Draw additional information on the frame
+                cv2.putText(frame, info_text, (center_x - 50, center_y - 20), 
                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
-                cv2.putText(frame, rotation_text, (center_x - 50, center_y + 10), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+                cv2.putText(frame, position_text, (center_x - 50, center_y), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
+                cv2.putText(frame, rotation_text, (center_x - 50, center_y + 20), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
                 
                 # Draw center point
                 cv2.circle(frame, (center_x, center_y), 5, (0, 0, 255), -1)
                 
-                print(f"Marker {marker_id}: Position({center_x}, {center_y}), Rotation: {angle:.1f}°")
+                print(f"Marker {marker_id} ({component_name}): Position({center_x}, {center_y}), Rotation: {angle:.1f}°")
         
         # Display the frame
         cv2.imshow('ArUco Marker Detection', frame)
