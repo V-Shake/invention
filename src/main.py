@@ -4,6 +4,7 @@ from ar_test import ar_main
 from ar_modern_ui import ar_main_modern
 from ar_textured import ar_main_textured
 from PIL import Image, ImageDraw, ImageFont
+from camera_utils import get_camera_with_fallback
 
 def pil_to_cv2(pil_image):
     """Convert PIL image to OpenCV format"""
@@ -81,12 +82,10 @@ def basic_marker_detection():
     print("Detection of ArUco Markers")
     print("Press 'q' to quit the application")
     
-    # Initialize the camera
-    cap = cv2.VideoCapture(0)
-    
-    # Check if camera opened successfully
-    if not cap.isOpened():
-        print("Error: Could not open camera")
+    # Initialize the best available camera
+    cap = get_camera_with_fallback()
+    if cap is None:
+        print("Error: Could not initialize any camera")
         return
     
     # Load the predefined dictionary for ArUco markers

@@ -7,6 +7,7 @@ import math
 import os
 from PIL import Image, ImageDraw, ImageFont
 import io
+from camera_utils import get_camera_with_fallback
 
 def pil_to_cv2(pil_image):
     """Convert PIL image to OpenCV format"""
@@ -255,11 +256,10 @@ def ar_main_modern():
         use_3d_model = False
     else:
         use_3d_model = True
-    
-    # Initialize camera
-    cap = cv2.VideoCapture(0)
-    if not cap.isOpened():
-        print("Error: Could not open camera")
+      # Initialize camera
+    cap = get_camera_with_fallback()
+    if cap is None:
+        print("Error: Could not initialize any camera")
         return
     
     # Get camera resolution
