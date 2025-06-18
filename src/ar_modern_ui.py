@@ -7,7 +7,7 @@ import math
 import os
 from PIL import Image, ImageDraw, ImageFont
 import io
-from camera_utils import get_camera_with_fallback
+from camera_utils import get_camera_super_fast
 
 def pil_to_cv2(pil_image):
     """Convert PIL image to OpenCV format"""
@@ -255,9 +255,8 @@ def ar_main_modern():
         print("Failed to load 3D model. Using text-only visualization.")
         use_3d_model = False
     else:
-        use_3d_model = True
-      # Initialize camera
-    cap = get_camera_with_fallback()
+        use_3d_model = True    # Initialize camera
+    cap = get_camera_super_fast()
     if cap is None:
         print("Error: Could not initialize any camera")
         return
