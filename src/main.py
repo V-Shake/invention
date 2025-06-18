@@ -13,7 +13,7 @@ def cv2_to_pil(cv2_image):
     """Convert OpenCV image to PIL format"""
     return Image.fromarray(cv2.cvtColor(cv2_image, cv2.COLOR_BGR2RGB))
 
-def create_modern_text_overlay(width, height, text, position, font_size=24, text_color=(0, 255, 255)):
+def create_modern_text_overlay(width, height, text, position, font_size=24, text_color=(0, 255, 255), center_text=False):
     """Create modern text overlay with custom fonts"""
     # Create transparent overlay
     overlay = Image.new('RGBA', (width, height), (0, 0, 0, 0))
@@ -51,6 +51,10 @@ def create_modern_text_overlay(width, height, text, position, font_size=24, text
     
     # Use provided position
     x, y = position
+    
+    # Center text horizontally if requested
+    if center_text:
+        x = x - text_width // 2
     
     # Convert BGR color to RGB for PIL
     r, g, b = text_color
@@ -142,30 +146,36 @@ def basic_marker_detection():
                 bbox_width = marker_width + padding
                 bbox_height = marker_height + padding
                 bbox_size = (bbox_width, bbox_height)
-                
-                # Draw rotated bounding box
+                  # Draw rotated bounding box
                 rotated_corners = draw_rotated_rectangle(frame, center, bbox_size, angle, (0, 255, 255), 2)
                 
                 # Get component label for this marker ID
                 component_name = component_labels.get(marker_id, f"Unknown Component (ID: {marker_id})")
                 
-                # Calculate rotated text position above the bounding box
-                text_position = calculate_rotated_text_position(center, bbox_size, angle, offset_distance=60)
+                # Calculate rotated text position below the bounding box (centered)
+                text_position = calculate_rotated_text_position_below(center, bbox_size, angle, offset_distance=30)
                 text_x, text_y = text_position
                 
                 # Ensure text doesn't go off screen
                 height, width = frame.shape[:2]
-                if text_y < 40:
-                    text_y = center_y + int(bbox_height/2) + 60
-                if text_x < 0:
-                    text_x = 10
-                elif text_x > width - 200:
-                    text_x = width - 200
+                if text_y > height - 50:  # Too close to bottom
+                    # Move text above the bounding box instead
+                    text_position = calculate_rotated_text_position(center, bbox_size, angle, offset_distance=50)
+                    text_x, text_y = text_position
+                    if text_y < 40:  # Still too close to top
+                        text_y = 40
                 
-                # Create modern font overlay for component label
+                # Boundary check for horizontal position (with some margin for centered text)
+                text_width, _ = get_text_dimensions(component_name, font_size=28)
+                if text_x - text_width//2 < 10:
+                    text_x = 10 + text_width//2
+                elif text_x + text_width//2 > width - 10:
+                    text_x = width - 10 - text_width//2
+                
+                # Create modern font overlay for component label (centered)
                 component_overlay = create_modern_text_overlay(
                     width, height, component_name, (text_x, text_y), 
-                    font_size=28, text_color=(0, 255, 255)  # Yellow color
+                    font_size=28, text_color=(0, 255, 255), center_text=True  # Yellow color, centered
                 )
                 frame = blend_overlay_with_frame(frame, component_overlay)
                 
@@ -173,22 +183,21 @@ def basic_marker_detection():
                 info_text = f"ID: {marker_id}"
                 position_text = f"X: {center_x}, Y: {center_y}"
                 rotation_text = f"Angle: {angle:.1f}°"
-                
-                # Create modern font overlays for info text
+                  # Create modern font overlays for info text (centered on marker)
                 info_overlay = create_modern_text_overlay(
-                    width, height, info_text, (center_x - 50, center_y - 30), 
-                    font_size=18, text_color=(0, 255, 0)  # Green color
+                    width, height, info_text, (center_x, center_y - 30), 
+                    font_size=18, text_color=(0, 255, 0), center_text=True  # Green color, centered
                 )
                 frame = blend_overlay_with_frame(frame, info_overlay)
                 
                 position_overlay = create_modern_text_overlay(
-                    width, height, position_text, (center_x - 50, center_y - 5), 
-                    font_size=16, text_color=(0, 255, 0)  # Green color
+                    width, height, position_text, (center_x, center_y - 5), 
+                    font_size=16, text_color=(0, 255, 0), center_text=True  # Green color, centered
                 )
                 frame = blend_overlay_with_frame(frame, position_overlay)                
                 rotation_overlay = create_modern_text_overlay(
-                    width, height, rotation_text, (center_x - 50, center_y + 20), 
-                    font_size=16, text_color=(0, 255, 0)  # Green color
+                    width, height, rotation_text, (center_x, center_y + 20), 
+                    font_size=16, text_color=(0, 255, 0), center_text=True  # Green color, centered
                 )
                 frame = blend_overlay_with_frame(frame, rotation_overlay)
                 
@@ -245,6 +254,39 @@ def draw_rotated_rectangle(frame, center, size, angle, color, thickness=2):
     cv2.polylines(frame, [rotated_corners], True, color, thickness)
     
     return rotated_corners
+
+def calculate_rotated_text_position_below(center, size, angle, offset_distance=50):
+    """Calculate text position below a rotated rectangle, centered"""
+    # Convert angle to radians
+    angle_rad = np.radians(angle)
+    
+    # Calculate the bottom-center of the rotated rectangle
+    half_height = size[1] / 2
+    
+    # Get the bottom-center point of the rotated rectangle
+    bottom_center_local = np.array([0, half_height + offset_distance])
+    
+    # Rotation matrix
+    rotation_matrix = np.array([
+        [np.cos(angle_rad), -np.sin(angle_rad)],
+        [np.sin(angle_rad), np.cos(angle_rad)]
+    ])
+    
+    # Rotate the bottom-center point
+    rotated_bottom = bottom_center_local @ rotation_matrix.T
+    
+    # Translate to actual center position
+    text_position = rotated_bottom + np.array(center)
+    
+    return text_position.astype(int)
+
+def get_text_dimensions(text, font_size=28):
+    """Get approximate text dimensions for positioning"""
+    # Rough estimation: each character is about 0.6 * font_size wide
+    # and height is approximately font_size
+    width = len(text) * int(font_size * 0.6)
+    height = font_size
+    return width, height
 
 def calculate_rotated_text_position(center, size, angle, offset_distance=50):
     """Calculate text position above a rotated rectangle"""
