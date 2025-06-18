@@ -3,6 +3,74 @@ import numpy as np
 from ar_test import ar_main
 from ar_modern_ui import ar_main_modern
 from ar_textured import ar_main_textured
+from PIL import Image, ImageDraw, ImageFont
+
+def pil_to_cv2(pil_image):
+    """Convert PIL image to OpenCV format"""
+    return cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
+
+def cv2_to_pil(cv2_image):
+    """Convert OpenCV image to PIL format"""
+    return Image.fromarray(cv2.cvtColor(cv2_image, cv2.COLOR_BGR2RGB))
+
+def create_modern_text_overlay(width, height, text, position, font_size=24, text_color=(0, 255, 255)):
+    """Create modern text overlay with custom fonts"""
+    # Create transparent overlay
+    overlay = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    
+    try:
+        # Try to use modern system fonts (same as ar_modern_ui)
+        fonts_to_try = [
+            "arial.ttf",
+            "calibri.ttf", 
+            "segoeui.ttf",
+            "helvetica.ttf"
+        ]
+        
+        font = None
+        for font_name in fonts_to_try:
+            try:
+                font = ImageFont.truetype(font_name, font_size)
+                break
+            except:
+                continue
+        
+        # Fallback to default font if no system fonts found
+        if font is None:
+            font = ImageFont.load_default()
+            
+    except Exception as e:
+        print(f"Font loading error: {e}")
+        font = ImageFont.load_default()
+    
+    # Get text dimensions
+    bbox = draw.textbbox((0, 0), text, font=font)
+    text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
+    
+    # Use provided position
+    x, y = position
+    
+    # Convert BGR color to RGB for PIL
+    r, g, b = text_color
+    rgb_color = (b, g, r, 255)  # Convert BGR to RGB and add alpha
+    
+    # Draw text
+    draw.text((x, y), text, font=font, fill=rgb_color)
+    
+    return overlay
+
+def blend_overlay_with_frame(frame, overlay):
+    """Blend PIL overlay with OpenCV frame"""
+    # Convert frame to PIL
+    frame_pil = cv2_to_pil(frame)
+    
+    # Composite overlay onto frame
+    composite = Image.alpha_composite(frame_pil.convert('RGBA'), overlay)
+    
+    # Convert back to OpenCV
+    return pil_to_cv2(composite.convert('RGB'))
 
 def basic_marker_detection():
     """Original ArUco marker detection function"""
@@ -69,8 +137,7 @@ def basic_marker_detection():
                 y_min -= padding
                 x_max += padding
                 y_max += padding
-                
-                # Draw bounding box
+                  # Draw bounding box
                 cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0, 255, 255), 2)
                 
                 # Get component label for this marker ID
@@ -78,15 +145,19 @@ def basic_marker_detection():
                 
                 # Calculate text position above the bounding box
                 text_x = x_min
-                text_y = y_min - 10
+                text_y = y_min - 40  # More space for modern font
                 
                 # Ensure text doesn't go off screen
-                if text_y < 20:
-                    text_y = y_max + 25
+                if text_y < 40:
+                    text_y = y_max + 40
                 
-                # Draw component label
-                cv2.putText(frame, component_name, (text_x, text_y), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+                # Create modern font overlay for component label
+                height, width = frame.shape[:2]
+                component_overlay = create_modern_text_overlay(
+                    width, height, component_name, (text_x, text_y), 
+                    font_size=28, text_color=(0, 255, 255)  # Yellow color
+                )
+                frame = blend_overlay_with_frame(frame, component_overlay)
                 
                 # Get the center point of the marker
                 center_x = int(np.mean(corner[0][:, 0]))
@@ -98,18 +169,29 @@ def basic_marker_detection():
                 dy = corner[0][1][1] - corner[0][0][1]
                 angle = np.degrees(np.arctan2(dy, dx))
                 
-                # Display additional marker information inside the bounding box
+                # Display additional marker information inside the bounding box with modern fonts
                 info_text = f"ID: {marker_id}"
                 position_text = f"X: {center_x}, Y: {center_y}"
                 rotation_text = f"Angle: {angle:.1f}°"
                 
-                # Draw additional information on the frame
-                cv2.putText(frame, info_text, (center_x - 50, center_y - 20), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
-                cv2.putText(frame, position_text, (center_x - 50, center_y), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
-                cv2.putText(frame, rotation_text, (center_x - 50, center_y + 20), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
+                # Create modern font overlays for info text
+                info_overlay = create_modern_text_overlay(
+                    width, height, info_text, (center_x - 50, center_y - 30), 
+                    font_size=18, text_color=(0, 255, 0)  # Green color
+                )
+                frame = blend_overlay_with_frame(frame, info_overlay)
+                
+                position_overlay = create_modern_text_overlay(
+                    width, height, position_text, (center_x - 50, center_y - 5), 
+                    font_size=16, text_color=(0, 255, 0)  # Green color
+                )
+                frame = blend_overlay_with_frame(frame, position_overlay)
+                
+                rotation_overlay = create_modern_text_overlay(
+                    width, height, rotation_text, (center_x - 50, center_y + 20), 
+                    font_size=16, text_color=(0, 255, 0)  # Green color
+                )
+                frame = blend_overlay_with_frame(frame, rotation_overlay)
                 
                 # Draw center point
                 cv2.circle(frame, (center_x, center_y), 5, (0, 0, 255), -1)
