@@ -1,4 +1,4 @@
-# AR Breadboard Visualizer
+# ArUco markers Detection & AR Breadboard Visualizer
 
 An augmented reality application that detects ArUco markers and visualizes electronic components with 3D models.
 
